@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -37,6 +38,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	file, header, err := r.FormFile("thumbnail")
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "unable to parse multipart form", err)
+		return
 	}
 	defer file.Close()
 	mediaType := header.Header.Get("Content-Type")
@@ -49,6 +51,10 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		respondWithError(w, http.StatusInternalServerError, "unable to read file", err)
 		return
 	}
+
+	imgData64 := base64.StdEncoding.EncodeToString(imgData)
+	dataURL64 := fmt.Sprintf("data:%s;base64,%s", mediaType, imgData64)
+
 	videoMetadata, err := cfg.db.GetVideo(videoID)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "couldnt find videot", err)
@@ -60,22 +66,12 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	videoThumbnail := thumbnail{
-		data: imgData,
-		mediaType: mediaType,
-	}
-
-	videoThumbnails[videoID] = videoThumbnail
-
 	//update video url
-	thumbnailURL := fmt.Sprintf("http://localhost:%s/api/thumbnails/%s", cfg.port, videoID)
-	videoMetadata.ThumbnailURL = &thumbnailURL
+	videoMetadata.ThumbnailURL = &dataURL64
+
 	if err = cfg.db.UpdateVideo(videoMetadata); err != nil {
-		delete(videoThumbnails, videoID)
-		respondWithError(w, http.StatusInternalServerError, "unable to update database with video metadata", err)
+		respondWithError(w, http.StatusInternalServerError, "unable to update video in database", err)
 		return
 	}
-
-
 	respondWithJSON(w, http.StatusOK, videoMetadata)
 }
