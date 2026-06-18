@@ -29,20 +29,21 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-
-	fmt.Println("uploading thumbnail for video", videoID, "by user", userID)
-
-	// TODO: implement the upload here
+	// TODO: ch 1.5:
 	const maxMemory = 10 << 20
 
 	//dunno why lesson doesnt error check the following, but ill follow suit for now
 	r.ParseMultipartForm(maxMemory)
 	file, header, err := r.FormFile("thumbnail")
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "unable to parse multipart form", err)
+		respondWithError(w, http.StatusBadRequest, "unable to parse multipart form", err)
 	}
 	defer file.Close()
 	mediaType := header.Header.Get("Content-Type")
+	if mediaType == "" {
+		respondWithError(w, http.StatusBadRequest, "missing content-type header", nil)
+		return
+	}
 	imgData, err := io.ReadAll(file)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "unable to read file", err)
@@ -50,11 +51,11 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 	videoMetadata, err := cfg.db.GetVideo(videoID)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "video with provided uuid does not exist", err)
+		respondWithError(w, http.StatusInternalServerError, "couldnt find videot", err)
 		return
 	}
 	//unauthorised access if logged in user is not owner of the video
-	if videoMetadata.CreateVideoParams.UserID != userID {
+	if videoMetadata.UserID != userID {
 		respondWithError(w, http.StatusUnauthorized, "unauthorised access. current user is not user that owns video", nil)
 		return
 	}
@@ -67,9 +68,10 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	videoThumbnails[videoID] = videoThumbnail
 
 	//update video url
-	thumbnailURL := "http://localhost:" + cfg.port + "/api/thumbnails/" + videoID.String()
+	thumbnailURL := fmt.Sprintf("http://localhost:%s/api/thumbnails/%s", cfg.port, videoID)
 	videoMetadata.ThumbnailURL = &thumbnailURL
 	if err = cfg.db.UpdateVideo(videoMetadata); err != nil {
+		delete(videoThumbnails, videoID)
 		respondWithError(w, http.StatusInternalServerError, "unable to update database with video metadata", err)
 		return
 	}
