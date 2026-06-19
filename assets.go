@@ -1,7 +1,10 @@
 package main
 
 import (
+	"errors"
+	"mime"
 	"os"
+	"path/filepath"
 )
 
 func (cfg apiConfig) ensureAssetsDir() error {

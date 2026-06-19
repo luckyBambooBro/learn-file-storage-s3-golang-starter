@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io"
 	"mime"
@@ -48,12 +47,6 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		respondWithError(w, http.StatusBadRequest, "missing content-type header", nil)
 		return
 	}
-	imgData, err := io.ReadAll(file)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "unable to read file", err)
-		return
-	}
-
 
 	//1.7 start
 	parsedType, _, err := mime.ParseMediaType(mediaType)
@@ -63,47 +56,53 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 
 	ext, err := mime.ExtensionsByType(parsedType)
-	if err != nil {
+	if err != nil || len(ext) < 1 {
 		respondWithError(w, http.StatusInternalServerError, "unable to obtain file ext", err)
-	}
-
-	thumbFilePath := filepath.Join(cfg.assetsRoot, videoID.String(), ext[0])
-	if thumbFilePath == "" {
-		respondWithError(w, http.StatusInternalServerError, "error creating thumbnail path", nil)
 		return
 	}
 
+	dirPath := filepath.Join(cfg.assetsRoot, videoID.String())
+	thumbFilePath := filepath.Join(cfg.assetsRoot, videoID.String(), ext[0])
+
+	//create file path
+	if err = os.MkdirAll(dirPath, 0755); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "unable to create folder for thumbFilePath", err)
+		return
+	}
 	thumbFile, err := os.Create(thumbFilePath)
-	if thumbFilePath == "" {
+	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "error creating thumbnail file", nil)
 		return
 	}
+	defer thumbFile.Close()
 
 	//copy file
 	_, err = io.Copy(thumbFile, file)
-
-
-
-
-	//1.7 end
-
-	videoMetadata, err := cfg.db.GetVideo(videoID)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "couldnt find videot", err)
+		respondWithError(w, http.StatusInternalServerError, "error copying thumbnail file", nil)
+		return
+	}
+
+	//1.7 checkpoint
+
+	video, err := cfg.db.GetVideo(videoID)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "couldnt find video", err)
 		return
 	}
 	//unauthorised access if logged in user is not owner of the video
-	if videoMetadata.UserID != userID {
+	if video.UserID != userID {
 		respondWithError(w, http.StatusUnauthorized, "unauthorised access. current user is not user that owns video", nil)
 		return
 	}
 
 	//update video url
-	videoMetadata.ThumbnailURL = &dataURL64
+	thumbURL := fmt.Sprintf("http://localhost:%s/assets/%s%s", cfg.port, videoID.String(), ext[0])
+	video.ThumbnailURL = &thumbURL
 
-	if err = cfg.db.UpdateVideo(videoMetadata); err != nil {
+	if err = cfg.db.UpdateVideo(video); err != nil {
 		respondWithError(w, http.StatusInternalServerError, "unable to update video in database", err)
 		return
 	}
-	respondWithJSON(w, http.StatusOK, videoMetadata)
+	respondWithJSON(w, http.StatusOK, video)
 }
