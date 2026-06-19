@@ -50,6 +50,9 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "", err)
 	}
+	if ext != "image/jpeg" && ext != "image/png" {
+		respondWithError(w, http.StatusBadRequest, "upload needs to be an image", nil)
+	}
 
 	thumbFile, err := cfg.createFolderAndFile(videoID.String(), ext)
 	if err != nil {
