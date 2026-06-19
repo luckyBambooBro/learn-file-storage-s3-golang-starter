@@ -4,7 +4,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -30,7 +33,6 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// TODO: ch 1.5:
 	const maxMemory = 10 << 20
 
 	//dunno why lesson doesnt error check the following, but ill follow suit for now
@@ -52,8 +54,38 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	imgData64 := base64.StdEncoding.EncodeToString(imgData)
-	dataURL64 := fmt.Sprintf("data:%s;base64,%s", mediaType, imgData64)
+
+	//1.7 start
+	parsedType, _, err := mime.ParseMediaType(mediaType)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "unable to parse content type for file extension", err)
+		return
+	}
+
+	ext, err := mime.ExtensionsByType(parsedType)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "unable to obtain file ext", err)
+	}
+
+	thumbFilePath := filepath.Join(cfg.assetsRoot, videoID.String(), ext[0])
+	if thumbFilePath == "" {
+		respondWithError(w, http.StatusInternalServerError, "error creating thumbnail path", nil)
+		return
+	}
+
+	thumbFile, err := os.Create(thumbFilePath)
+	if thumbFilePath == "" {
+		respondWithError(w, http.StatusInternalServerError, "error creating thumbnail file", nil)
+		return
+	}
+
+	//copy file
+	_, err = io.Copy(thumbFile, file)
+
+
+
+
+	//1.7 end
 
 	videoMetadata, err := cfg.db.GetVideo(videoID)
 	if err != nil {
