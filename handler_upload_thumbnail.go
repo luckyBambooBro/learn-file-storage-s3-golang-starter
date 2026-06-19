@@ -3,10 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -49,33 +46,16 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 
 	//1.7 start
-	parsedType, _, err := mime.ParseMediaType(mediaType)
+	ext, err := getFileExtension(mediaType)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "unable to parse content type for file extension", err)
-		return
+		respondWithError(w, http.StatusBadRequest, "", err)
 	}
 
-	ext, err := mime.ExtensionsByType(parsedType)
-	if err != nil || len(ext) < 1 {
-		respondWithError(w, http.StatusInternalServerError, "unable to obtain file ext", err)
-		return
-	}
-
-	dirPath := filepath.Join(cfg.assetsRoot, videoID.String())
-	thumbFilePath := filepath.Join(cfg.assetsRoot, videoID.String(), ext[0])
-
-	//create file path
-	if err = os.MkdirAll(dirPath, 0755); err != nil {
-		respondWithError(w, http.StatusInternalServerError, "unable to create folder for thumbFilePath", err)
-		return
-	}
-	thumbFile, err := os.Create(thumbFilePath)
+	thumbFile, err := cfg.createFolderAndFile(videoID.String(), ext)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "error creating thumbnail file", nil)
+		respondWithError(w, http.StatusBadRequest, "unable to create thumbnail folder/file", err)
 		return
 	}
-	defer thumbFile.Close()
-
 	//copy file
 	_, err = io.Copy(thumbFile, file)
 	if err != nil {
