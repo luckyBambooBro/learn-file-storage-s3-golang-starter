@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"mime"
 	"os"
 	"path/filepath"
@@ -48,5 +49,10 @@ func (cfg *apiConfig) createFolderAndFile (videoID, ext string) (thumbFile *os.F
 
 	return thumbFile, nil
 
+}
+
+func (cfg *apiConfig) getAssetURL(assetPath string) string {
+	url := fmt.Sprintf("http://localhost:%s/assets/%s", cfg.port, assetPath)
+	return url
 }
 	

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 
@@ -49,9 +48,11 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	ext, err := getFileExtension(mediaType)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "", err)
+		return
 	}
-	if ext != "image/jpeg" && ext != "image/png" {
+	if ext != ".jpeg" && ext != ".jpg" && ext != ".png" {
 		respondWithError(w, http.StatusBadRequest, "upload needs to be an image", nil)
+		return
 	}
 
 	thumbFile, err := cfg.createFolderAndFile(videoID.String(), ext)
@@ -80,8 +81,10 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 
 	//update video url
-	thumbURL := fmt.Sprintf("http://localhost:%s/assets/%s%s", cfg.port, videoID.String(), ext[0])
-	video.ThumbnailURL = &thumbURL
+	videoIDandExt := videoID.String() + ext
+	url := cfg.getAssetURL(videoIDandExt)
+
+	video.ThumbnailURL = &url
 
 	if err = cfg.db.UpdateVideo(video); err != nil {
 		respondWithError(w, http.StatusInternalServerError, "unable to update video in database", err)
