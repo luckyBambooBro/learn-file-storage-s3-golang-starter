@@ -60,6 +60,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		respondWithError(w, http.StatusBadRequest, "unable to create thumbnail folder/file", err)
 		return
 	}
+	defer thumbFile.Close()
 	//copy file
 	_, err = io.Copy(thumbFile, file)
 	if err != nil {

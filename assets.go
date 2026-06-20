@@ -34,12 +34,12 @@ func getFileExtension (mediaType string) (extension string, err error) {
 
 
 func (cfg *apiConfig) createFolderAndFile (videoID, ext string) (thumbFile *os.File, err error) {
-	dirPath := filepath.Join(cfg.assetsRoot, videoID)
-	thumbFilePath := filepath.Join(cfg.assetsRoot, videoID, ext)
-
-	if err = os.MkdirAll(dirPath, 0755); err != nil {
-		return nil, err
-	}
+	err = os.MkdirAll(cfg.assetsRoot, 0755)
+    if err != nil {
+        return nil, err
+    }
+	
+	thumbFilePath := filepath.Join(cfg.assetsRoot, videoID + ext)
 	thumbFile, err = os.Create(thumbFilePath)
 	if err != nil {
 		return nil, err
