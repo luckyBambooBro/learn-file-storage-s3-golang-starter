@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"mime"
@@ -33,21 +35,26 @@ func getFileExtension (mediaType string) (extension string, err error) {
 
 
 
-func (cfg *apiConfig) createFolderAndFile (videoID, ext string) (thumbFile *os.File, err error) {
+func (cfg *apiConfig) createAssetFile (ext string) (thumbFilePath string, thumbFile *os.File, err error) {
+	b := make([]byte, 32)
+	_, _ = rand.Read(b) //didnt error check cos docs say it never returns an error
+	randString := base64.RawURLEncoding.EncodeToString(b)
+	
 	err = os.MkdirAll(cfg.assetsRoot, 0755)
     if err != nil {
-        return nil, err
+        return "", nil, err
     }
 	
-	thumbFilePath := filepath.Join(cfg.assetsRoot, videoID + ext)
+	filename := randString + ext
+	thumbFilePath = filepath.Join(cfg.assetsRoot, filename)
 	thumbFile, err = os.Create(thumbFilePath)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	// i dont think the following goes here? probably goes right after the function call to this fucntion
 	// defer thumbFile.Close()
 
-	return thumbFile, nil
+	return filename, thumbFile, nil
 
 }
 

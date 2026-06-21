@@ -55,7 +55,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	thumbFile, err := cfg.createFolderAndFile(videoID.String(), ext)
+	thumbFilePath, thumbFile, err := cfg.createAssetFile(ext)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "unable to create thumbnail folder/file", err)
 		return
@@ -82,9 +82,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 
 	//update video url
-	videoIDandExt := videoID.String() + ext
-	url := cfg.getAssetURL(videoIDandExt)
-
+	url := cfg.getAssetURL(thumbFilePath)
 	video.ThumbnailURL = &url
 
 	if err = cfg.db.UpdateVideo(video); err != nil {
