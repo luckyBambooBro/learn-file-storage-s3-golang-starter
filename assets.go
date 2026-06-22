@@ -3,63 +3,41 @@ package main
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"fmt"
-	"mime"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func (cfg apiConfig) ensureAssetsDir() error {
 	if _, err := os.Stat(cfg.assetsRoot); os.IsNotExist(err) {
-		return os.Mkdir(cfg.assetsRoot, 0755)
+		return os.Mkdir(cfg.assetsRoot, 0o755)
 	}
 	return nil
 }
 
-func getFileExtension (mediaType string) (extension string, err error) {
-	parsedType, _, err := mime.ParseMediaType(mediaType)
-	if err != nil {
-		return "", err
-	}	
-
-	extensions, err := mime.ExtensionsByType(parsedType)
-	if err != nil {
-		return "", err
-	} else if len(extensions) < 1 {
-		return "", errors.New("invalid extension type for thumbnail")
-	}
-	return extensions[0], nil 
-}
-
-
-
-
-func (cfg *apiConfig) createAssetFile (ext string) (thumbFilePath string, thumbFile *os.File, err error) {
+func getAssetPath(mediaType string) string {
+	ext := mediaTypeToExt(mediaType)
 	b := make([]byte, 32)
-	_, _ = rand.Read(b) //didnt error check cos docs say it never returns an error
-	randString := base64.RawURLEncoding.EncodeToString(b)
-	
-	err = os.MkdirAll(cfg.assetsRoot, 0755)
-    if err != nil {
-        return "", nil, err
-    }
-	
-	filename := randString + ext
-	thumbFilePath = filepath.Join(cfg.assetsRoot, filename)
-	thumbFile, err = os.Create(thumbFilePath)
-	if err != nil {
-		return "", nil, err
+	if _, err := rand.Read(b); err != nil {
+		panic("failed to generte random bytes")
 	}
-	// i dont think the following goes here? probably goes right after the function call to this fucntion
-	// defer thumbFile.Close()
-
-	return filename, thumbFile, nil
-
+	path := base64.RawURLEncoding.EncodeToString(b)
+	return fmt.Sprintf("%s%s", path, ext)
 }
 
-func (cfg *apiConfig) getAssetURL(assetPath string) string {
-	url := fmt.Sprintf("http://localhost:%s/assets/%s", cfg.port, assetPath)
-	return url
+func (cfg apiConfig) getAssetDiskPath(assetPath string) string {
+	return filepath.Join(cfg.assetsRoot, assetPath)
 }
-	
+
+func (cfg apiConfig) getAssetURL(assetPath string) string {
+	return fmt.Sprintf("http://localhost:%s/assets/%s", cfg.port, assetPath)
+}
+
+func mediaTypeToExt(mediaType string) string {
+	parts := strings.Split(mediaType, "/")
+	if len(parts) != 2 {
+		return ".bin"
+	}
+	return "." + parts[1]
+}
