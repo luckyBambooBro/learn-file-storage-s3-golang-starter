@@ -39,7 +39,10 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, http.StatusUnauthorized, "unauthorised user access for requested video", nil)
 	}
 
-	
+	const maxMemory = 32 << 20
+	r.ParseMultipartForm(maxMemory)
+
+	file, header, err := r.Formfile()
 
 	
 
