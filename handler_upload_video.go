@@ -1,8 +1,10 @@
 package main
 
 import (
+	"io"
 	"mime"
 	"net/http"
+	"os"
 
 	"internal/auth"
 
@@ -65,6 +67,24 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	//create temp file and copy uploaded file over
+	tempFile, err := os.CreateTemp("", "tubely-upload.mp4")
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "internal error, could not create temporary file", err)
+		return
+	}
+	defer os.Remove(tempFile.Name())
+	defer tempFile.Close()
 
+	if _, err = io.Copy(tempFile, file); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "unable to copy file", err)
+		return
+	}
+	tempFile.Seek(0, io.SeekStart)
+
+	cfg.s3Client.PutObject()
+	
+
+	
 
 }
