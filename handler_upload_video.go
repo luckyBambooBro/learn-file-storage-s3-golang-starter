@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io"
 	"mime"
 	"net/http"
@@ -82,7 +83,9 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 	}
 	tempFile.Seek(0, io.SeekStart)
 
-	cfg.s3Client.PutObject()
+	//put file into s3
+	assetPath := getAssetPath(mediatype)
+	p, err := cfg.s3Client.PutObject(r.Context(), )
 	
 
 	
