@@ -1,14 +1,15 @@
 package main
 
 import (
-	"context"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
 	"os"
 
-	"internal/auth"
-
+	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
 )
 
@@ -85,8 +86,26 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 
 	//put file into s3
 	assetPath := getAssetPath(mediatype)
-	p, err := cfg.s3Client.PutObject(r.Context(), )
-	
+	_, err = cfg.s3Client.PutObject(r.Context(), &s3.PutObjectInput{
+		Bucket: aws.String(cfg.s3Bucket),
+		Key: aws.String(assetPath),
+		Body: tempFile,
+		ContentType: aws.String(mediatype),
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "aws PutObject error", err)
+		return
+	}
+
+	videoURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", cfg.s3Bucket, cfg.s3Region, assetPath)
+	video.VideoURL = &videoURL
+
+	if err = cfg.db.UpdateVideo(video); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "unable to update video URL", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, video)
 
 	
 
