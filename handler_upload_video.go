@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -82,8 +81,11 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, http.StatusInternalServerError, "unable to copy file", err)
 		return
 	}
-	tempFile.Seek(0, io.SeekStart)
-
+	_, err = tempFile.Seek(0, io.SeekStart)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not reset file pointer", err)
+		return
+	}
 	//put file into s3
 	assetPath := getAssetPath(mediatype)
 	_, err = cfg.s3Client.PutObject(r.Context(), &s3.PutObjectInput{
@@ -97,7 +99,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	videoURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", cfg.s3Bucket, cfg.s3Region, assetPath)
+	videoURL := cfg.getObjectURL(assetPath)
 	video.VideoURL = &videoURL
 
 	if err = cfg.db.UpdateVideo(video); err != nil {
