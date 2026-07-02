@@ -46,7 +46,7 @@ func getVideoAspectRatio(filePath string) (string, error) {
 	//determine and return asp ratio
 	width, height := v.Streams[0].Width, v.Streams[0].Height
 
-	if width/height >= 1 {
+	if 1.6 < width/height < 1.8 {
 		return "16:9", nil
 	} else if width/height <= 1 {
 		return "9:16", nil

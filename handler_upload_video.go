@@ -88,6 +88,23 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 	}
 	//put file into s3
 	assetPath := getAssetPath(mediatype)
+
+	prefix, err := getVideoAspectRatio(tempFile.Name())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "unable to obtain aspect ratio", err)
+		return
+	}
+
+	switch prefix {
+	case "16:9":
+		assetPath = "landscape/" + assetPath
+	case "9:16":
+		assetPath = "portrait/" + assetPath
+	default:
+		assetPath = "other/" + assetPath
+	}
+
+
 	_, err = cfg.s3Client.PutObject(r.Context(), &s3.PutObjectInput{
 		Bucket: aws.String(cfg.s3Bucket),
 		Key: aws.String(assetPath),
@@ -105,12 +122,6 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 	if err = cfg.db.UpdateVideo(video); err != nil {
 		respondWithError(w, http.StatusInternalServerError, "unable to update video URL", err)
 		return
-	}
-
-	//chapter 4.3:
-	aspRatio, err := getVideoAspectRatio(tempFile.Name())
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "unable to obtain aspect ratio", err)
 	}
 
 	respondWithJSON(w, http.StatusOK, video)

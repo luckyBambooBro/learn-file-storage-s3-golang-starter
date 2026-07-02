@@ -20,7 +20,7 @@ func getAssetPath(mediaType string) string {
 	ext := mediaTypeToExt(mediaType)
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		panic("failed to generte random bytes")
+		panic("failed to generate random bytes")
 	}
 	path := base64.RawURLEncoding.EncodeToString(b)
 	return fmt.Sprintf("%s%s", path, ext)
