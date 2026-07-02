@@ -1,13 +1,10 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"io"
 	"mime"
 	"net/http"
 	"os"
-	"os/exec"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -114,40 +111,3 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 
 }
 
-func getVideoAspectRatio(filePath string) (string, error) {
-	cmd := exec.Command(
-		"ffprobe",
-		"-v",
-		"error",
-		"-print_format",
-		"json",
-		"-show_streams",
-		filePath)
-
-	buf := &bytes.Buffer{}
-	cmd.Stdout = buf
-
-	if err := cmd.Run(); err != nil {
-		return "", err
-	}
-	stdoutBytes := buf.Bytes()
-
-	v := &FFProbeData{}
-	if err := json.Unmarshal(stdoutBytes, v); err != nil {
-		return "", err
-	}
-}
-
-/*
-
-Create a function getVideoAspectRatio(filePath string) (string, error) that takes a file path and returns the aspect ratio as a string.
-
-It should use exec.Command to run the same ffprobe command as above. In this case, the command is ffprobe and the arguments are -v, error, -print_format, json, -show_streams, and the file path.
-
-Set the resulting exec.Cmd's Stdout field to a pointer to a new bytes.Buffer.
-.Run() the command
-
-Unmarshal the stdout of the command from the buffer's .Bytes into a JSON struct so that you can get the width and height fields.
-I did a bit of math to determine the ratio, then returned one of three strings: 16:9, 9:16, or other.
-
-*/
